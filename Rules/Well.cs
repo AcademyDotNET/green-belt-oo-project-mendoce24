@@ -1,12 +1,17 @@
-﻿
-namespace GameOfGoose.Rules
+﻿namespace GameOfGoose.Rules
 {
     public class Well : IRules
     {
+        public int Position { get; set; }
+
+        public Well(int position)
+        {
+            Position = position;
+        }
+
         public void ValidateRule(Player player)
         {
-            player.InWell(true);
-            player.SkipTurn(1); // TODO: Stuck unless other player enters
+            player.InWell = true;
         }
     }
 }

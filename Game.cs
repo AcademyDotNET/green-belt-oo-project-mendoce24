@@ -1,4 +1,4 @@
-﻿using GameOfGoose.Board;
+﻿using GameOfGoose.Dice;
 using GameOfGoose.Print;
 using GameOfGoose.Rules;
 
@@ -6,132 +6,91 @@ namespace GameOfGoose
 {
     public class Game
     {
-        private readonly IBoard board;
-        private readonly Player[] players;
-        private readonly IDice dice;
-        private readonly IPrint print;
-        private int shift;
-        private string headText;
-        private string shiftText;
-        private String someoneInWelling;
+        private readonly Player[] _players;
+        private readonly IDice _dice;
+        private readonly IPrint _print;
+        private readonly PrintFormat _format;
 
-        public Game(IBoard board, Player[] players, IDice dice, IPrint print)
+        private int _turn;
+
+        public Game(Player[] players, IDice dice, IPrint print, PrintFormat format)
         {
-            this.players = players;
-            this.dice = dice;
-            this.board = board;
-            this.print = print;
-            this.someoneInWelling = string.Empty;
+            _players = players;
+            _dice = dice;
+            _print = print;
+            _format = format;
         }
 
         public void Play()
         {
-            shift = 0;
-            headText = string.Empty;
+            _turn = 0;
+            string turnText;
+            bool gameFinishes = false;
 
-            print.Print("Game of Goose!");
+            _print.Print(_format.HeaderGame(_players));
 
-            while (true)
+            while (!gameFinishes)
             {
-                shift++;
-                shiftText = string.Empty;
-
-                foreach (var player in players)
+                _turn++;
+                turnText = string.Empty;
+                foreach (Player player in _players)
                 {
-                    if (shift == 1)
-                        headText += $"\t{player.Name}\t";
-
-                    //prison validation
-                    if (player.InWelling && ((this.someoneInWelling != string.Empty) && (this.someoneInWelling != player.Name)))
-                    {
-                        this.someoneInWelling = player.Name;
-                        player.SkipTurn(0);
-                    }
-
-                    Turn(player);
-
-                    //prison validation
-                    if (player.InWelling)
-                        this.someoneInWelling = player.Name;
-
-                    if (player.Position == board.FinalPosition())
-                    {
-                        print.Print($"TURN {shift}");
-                        print.Print($"{shiftText}");
-                        print.Print($"{player.Name} wins!");
-                        return;
-                    }
+                    player.ValidateWellExit(_players);
+                    turnText += PlayTurn(player);
+                    //ValidateWellEntry(player);
                 }
 
-                if (shift == 1)
-                    print.Print($"{headText}");
+                _print.Print($"TURN {_turn}");
+                _print.Print(turnText);
 
-                print.Print($"TURN {shift}");
-                print.Print($"{shiftText}");
-            }
-        }
-
-        private void Turn(Player player)
-        {
-            int roll = dice.Roll();
-            int roll2 = dice.Roll();
-            int newPosicion = player.Position + (roll + roll2);
-
-            if (shift == 1)
-            {
-                player.MoveTo(newPosicion);
-
-                IRules actionFirst = new FirstThrow(roll, roll2);
-                actionFirst.ValidateRule(player);
-                shiftText += $"\t{roll} + {roll2}: S{player.Position}";
-            }
-            else if (player.TurnsToSkip == 0)
-            {
-                newPosicion = CheckPosition(newPosicion);
-                player.MoveTo(newPosicion);
-
-                IRules action = this.board.GetBoardAction(newPosicion);
-
-                action.ValidateRule(player);//TODO Validate 63 position
-
-                if (player.Position != newPosicion)
+                if (_players.FirstOrDefault(p => p.Winner) != null)
                 {
-                    shiftText += $"\t{roll} + {roll2}: S{player.LastPosition} -> S{player.Position}";
-
-                    if (player.TurnsToSkip != 0)
-                        validateTurn(player, newPosicion);
-                }
-                else
-                    shiftText += $"\t{roll} + {roll2}: S{player.Position}";
-            }
-            else
-            {
-                newPosicion = player.Position;
-                IRules action = this.board.GetBoardAction(newPosicion);
-                action.ValidateRule(player);
-                shiftText += $"\t/ : S{player.Position}\t";
-            }
-        }
-
-        private void validateTurn(Player player, int newPosicion)
-        {
-            while (player.Position != newPosicion)
-            {
-                print.Print($"entra a la validacion");
-                newPosicion = player.Position;
-                IRules action = this.board.GetBoardAction(player.Position);
-                action.ValidateRule(player);
-                if (player.Position != newPosicion)
-                {
-                    shiftText += $" -> S{player.Position}";
-                    newPosicion = player.Position;
+                    turnText = _format.WinnerGame(_players);
+                    _print.Print(turnText);
+                    gameFinishes = true;
                 }
             }
         }
 
-        public int CheckPosition(int position)
+        private int[] RollTheDice(int numberOfDie = 2)
         {
-            return (position > board.FinalPosition()) ? board.FinalPosition() - (position - board.FinalPosition()) : position;
+            int[] result = new int[numberOfDie];
+
+            for (int i = 0; i < numberOfDie; i++)
+            {
+                result[i] = _dice.Roll();
+            }
+
+            return result;
+        }
+
+        private string PlayTurn(Player player)
+        {
+            string turnText;
+            int[] dices = RollTheDice();
+
+            if (player.TurnsToSkip > 0 || player.InWell)
+            {
+                player.SkipTurn();
+                turnText = _format.SkipedTurn();
+            }
+            else if (_turn == 1) // 1st turn game flow
+            {
+                HandleFirstTurn(player, dices);
+                turnText = _format.NormalTurn(player, dices);
+            }
+            else // Normal game flow
+            {
+                player.Move(dices);
+                turnText = _format.NormalTurn(player, dices);
+            }
+            return turnText;
+        }
+
+        private void HandleFirstTurn(Player player, int[] dices)
+        {
+            FirstThrow actionFirst = new FirstThrow(dices);
+            actionFirst.ValidateRule(player);
         }
     }
 }

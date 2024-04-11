@@ -1,26 +1,28 @@
-﻿
-namespace GameOfGoose.Rules
+﻿namespace GameOfGoose.Rules
 {
-    public class FirstThrow : IRules
+    public class FirstThrow : IRuleValidation
     {
-        private int rollDice1;
-        private int rollDice2;
+        // TODO: This class is not an IRule -> It has no position
+        private int[] _dices;
 
-        public FirstThrow(int rollDice1, int rollDice2)
+        public FirstThrow(int[] dices)
         {
-            this.rollDice1 = rollDice1;
-            this.rollDice2 = rollDice2;
+            _dices = dices;
         }
 
         public void ValidateRule(Player player)
         {
-            if (new[] { rollDice1, rollDice2 }.OrderBy(x => x).SequenceEqual(new[] { 4, 5 }))
+            if (_dices.OrderBy(x => x).SequenceEqual(new[] { 4, 5 }))
             {
                 player.MoveTo(26);
             }
-            else if (new[] { rollDice1, rollDice2 }.OrderBy(x => x).SequenceEqual(new[] { 3, 6 }))
+            else if (_dices.OrderBy(x => x).SequenceEqual(new[] { 3, 6 }))
             {
                 player.MoveTo(53);
+            }
+            else
+            {
+                player.Move(_dices);
             }
         }
     }

@@ -3,21 +3,24 @@ using GameOfGoose.Print;
 
 namespace GameOfGoose
 {
-    class Program
+    internal class Program
     {
-        static void Main(string[] args)
+        private static void Main()
         {
             Player[] players = {
                 new Player("PIECE 1"),
                 new Player("PIECE 2"),
-                new Player("PIECE 3")
+                new Player("PIECE 3")/*,
+                new Player("PIECE 4")*/
             };
 
-            IDice dice = new Dice();
-            IBoard boqrdGame = new BoardGoose();
+            // All dependencies go here
+            Dice.IDice dice = new Dice.Dice();
+            BoardGoose boardGame = BoardGoose.Instance;//Singleton implementation
             IPrint print = new PrintInConsole();
+            PrintFormat forrmat = new PrintFormat();
 
-            Game game = new Game(boqrdGame, players, dice, print) ;
+            Game game = new(players, dice, print, forrmat);
             game.Play();
         }
     }
